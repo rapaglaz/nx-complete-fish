@@ -6,6 +6,7 @@ lefthook = "2.2.2"
 # A newer or older ShellCheck flags different things.
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
+git-cliff = "2.14.2"
 "github:fish-shell/fish-shell" = { version = "4.9.3", os = ["linux"] }
 
 [tasks.check]
@@ -27,6 +28,10 @@ run = "bash tests/smoke.sh"
 [tasks.format]
 description = "Format the fish files with fish_indent and the Bash scripts with shfmt"
 run = "bash scripts/check.sh --write"
+
+[tasks.release]
+description = "Write CHANGELOG.md, commit it and create a signed tag (on main; nothing is pushed)"
+run = "bash scripts/release.sh"
 
 [tasks.hooks]
 description = "Install the Git hooks (pre-commit, commit-msg)"
