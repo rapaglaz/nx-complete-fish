@@ -89,6 +89,7 @@ mise run test        # tests with the fish on PATH
 mise run test:oldest # tests with fish 4.0.0 in Docker
 mise run smoke       # fisher in a temporary HOME, completion in a new shell
 mise run format      # fish_indent and shfmt
+mise run release     # on main: CHANGELOG.md, a release commit and a signed tag
 ```
 
 | File | Content |
@@ -100,6 +101,14 @@ mise run format      # fish_indent and shfmt
 | `tests/smoke.sh` | fisher installation in a temporary HOME |
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org) (`feat`, `fix`, `chore`, `refactor`, `test`, `docs`, `ci`), with a subject of at most 72 characters.
+
+A release is made on main with `mise run release`, which asks git-cliff for the next version, writes CHANGELOG.md, commits it and creates a signed tag. Push both with `git push origin main vX.Y.Z`; the Release workflow then creates the GitHub Release with the notes of that version.
+
+## Versioning
+
+Releases are Git tags `vX.Y.Z` that follow [Semantic Versioning](https://semver.org), with the changes in [CHANGELOG.md](CHANGELOG.md). While the version is 0.x, a breaking change raises the minor version. To stay on one version, install its tag: `fisher install rapaglaz/nx-complete-fish@v0.1.0`.
+
+A change is breaking when it raises a minimum version (Nx, the shell or jq), changes how the plugin is installed, drops `pnpm` or `npx`, or renames or removes one of these names: `__nx_complete`, `__nx_complete --wrapped`, `__nx_complete_wrap` and the files in `completions/`. Other names that start with `__nx_`, for example the caches, are internal and can change in any release.
 
 ## License
 
