@@ -1,0 +1,33 @@
+# Development tools, pinned so that CI, the Git hooks and your terminal run the same versions.
+# mise has fish only as the Linux release build. On macOS, install fish with Homebrew.
+[tools]
+jq = "1.8.2"
+lefthook = "2.2.2"
+# A newer or older ShellCheck flags different things.
+shellcheck = "0.11.0"
+shfmt = "3.14.1"
+"github:fish-shell/fish-shell" = { version = "4.9.3", os = ["linux"] }
+
+[tasks.check]
+description = "Lint and format check: fish_indent, fish --no-execute, ShellCheck, shfmt"
+run = "bash scripts/check.sh"
+
+[tasks.test]
+description = "Tests with the fish on PATH"
+run = "bash scripts/test.sh"
+
+[tasks."test:oldest"]
+description = "Tests with the oldest supported fish (4.0.0, needs Docker)"
+run = "bash scripts/test.sh 4.0.0"
+
+[tasks.smoke]
+description = "Install with fisher in a temporary HOME and complete in a new shell (needs network)"
+run = "bash tests/smoke.sh"
+
+[tasks.format]
+description = "Format the fish files with fish_indent and the Bash scripts with shfmt"
+run = "bash scripts/check.sh --write"
+
+[tasks.hooks]
+description = "Install the Git hooks (pre-commit, commit-msg)"
+run = "lefthook install"
