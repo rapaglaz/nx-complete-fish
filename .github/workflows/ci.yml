@@ -1,0 +1,60 @@
+# Lint, tests with the oldest supported and the current fish, and the fisher smoke test.
+# Actions are pinned to a commit SHA; the comment names the release.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.17
+      - run: mise run check
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The current release: from mise on Linux, from Homebrew on macOS.
+          - os: ubuntu-latest
+            task: test
+          - os: macos-latest
+            task: test
+          # The oldest supported release, in a Debian container.
+          - os: ubuntu-latest
+            task: "test:oldest"
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.task }} (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.17
+      - if: runner.os == 'macOS'
+        run: brew install fish
+      - run: mise run ${{ matrix.task }}
+
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+        with:
+          version: 2026.10.17
+      - if: runner.os == 'macOS'
+        run: brew install fish
+      - run: mise run smoke
