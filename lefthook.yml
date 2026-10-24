@@ -1,0 +1,15 @@
+# Git hooks, installed once per clone with `mise run hooks`.
+# CI runs the same scripts, so the hooks only give an earlier answer.
+pre-commit:
+  skip: [merge, rebase]
+  commands:
+    check:
+      run: bash scripts/check.sh
+    test:
+      run: bash scripts/test.sh
+
+commit-msg:
+  skip: [rebase]
+  commands:
+    conventional-commit:
+      run: bash scripts/check-commit-msg.sh {1}
