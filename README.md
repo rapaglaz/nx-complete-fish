@@ -23,7 +23,7 @@ Other `pnpm` and `npx` commands keep the completion that they have without the p
 
 ## Requirements
 
-- fish 4.0 or later (tested with 4.0.0 and 4.9.3)
+- fish 4.0 or later (tested with 4.9.3 in every CI run, and with 4.0.0 before every release)
 - Nx 23.3 or later in the workspace (tested with 23.3.0 and 23.3.1). An older Nx gets file names only, see [How it works](#how-it-works).
 - [jq](https://jqlang.org) for the generator options and the configurations
 
@@ -86,7 +86,7 @@ mise install
 mise run hooks       # pre-commit: check and test; commit-msg: Conventional Commits
 mise run check       # fish_indent, fish --no-execute, ShellCheck, shfmt
 mise run test        # tests with the fish on PATH
-mise run test:oldest # tests with fish 4.0.0 in Docker
+mise run test:oldest # tests with fish 4.0.0 in Docker (CI: at every release)
 mise run smoke       # fisher in a temporary HOME, completion in a new shell
 mise run format      # fish_indent and shfmt
 mise run release     # on main: CHANGELOG.md, a release commit and a signed tag
@@ -102,7 +102,7 @@ mise run release     # on main: CHANGELOG.md, a release commit and a signed tag
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org) (`feat`, `fix`, `chore`, `refactor`, `test`, `docs`, `ci`), with a subject of at most 72 characters.
 
-A release is made on main with `mise run release`, which asks git-cliff for the next version, writes CHANGELOG.md, commits it and creates a signed tag. Push both with `git push origin main vX.Y.Z`; the Release workflow then creates the GitHub Release with the notes of that version.
+A release is made on main with `mise run release`, which asks git-cliff for the next version, writes CHANGELOG.md, commits it and creates a signed tag. Push both with `git push origin main vX.Y.Z`; the Release workflow then tests the oldest supported shell release and, when the tests pass, creates the GitHub Release with the notes of that version. Run `mise run test:oldest` before the release: a failure in the workflow leaves the tag without a GitHub Release, and the fix needs a new patch version.
 
 ## Versioning
 
