@@ -1,8 +1,7 @@
 # Tests the Nx completion (functions/ and completions/) in a fake workspace: generator options and
 # values from schema.json, target configurations from the project graph, the hand-over to
-# NX_COMPLETE, the cache refresh, and the pnpm and npx wrappers together with the completion that
-# pnpm has without this plugin. `complete -C` runs the real completion engine, so no terminal is
-# needed.
+# NX_COMPLETE, the cache refresh, and the hand-over from a runner rule of the shell configuration.
+# `complete -C` runs the real completion engine, so no terminal is needed.
 # Usage: fish --no-config tests/nx_completion_test.fish (or `mise run test`)
 
 set -l repo (path resolve (status dirname)/..)
@@ -57,17 +56,13 @@ chmod +x $ws/node_modules/.bin/nx
 # fish loads completions/nx.fish only for a command on PATH; mise puts node_modules/.bin there.
 set -p PATH $ws/node_modules/.bin
 
-# Fake pnpm and npx, so that no real one runs. The fake pnpm prints a completion script like
-# `pnpm completion fish` does; the completion built into fish 4.1 and later sources it.
-mkdir -p $root/bin $root/later
-printf '%s\n' '#!/bin/sh' 'echo "complete -c pnpm -f -a BUILTIN-install"' >$root/bin/pnpm
-printf '%s\n' '#!/bin/sh' >$root/bin/npx
-chmod +x $root/bin/pnpm $root/bin/npx
+# A runner of the shell configuration, as a fish configuration can define it for pnpm exec or npx:
+# it hands the rest of the line to __fish_complete_subcommand. The plugin installs no such rule.
+mkdir -p $root/bin
+printf '%s\n' '#!/bin/sh' >$root/bin/runner
+chmod +x $root/bin/runner
 set -p PATH $root/bin
-set -gx XDG_CACHE_HOME $root/cache
-# A pnpm completion that this plugin hides: a later directory of $fish_complete_path.
-echo 'complete -c pnpm -f -a "ORIG-install ORIG-nx"' >$root/later/pnpm.fish
-set -a fish_complete_path $root/later
+complete --command runner --no-files --arguments '(__fish_complete_subcommand --fcs-skip=2)'
 
 # The candidates of a command line without descriptions, joined with spaces.
 function candidates
@@ -113,35 +108,12 @@ check "other positions go to Nx" build (candidates 'nx b')
 check "Nx gets NX_COMPLETE=fish and the words up to the cursor" 'fish|nx|b|' (cat $root/nx-call)
 check "nx g <Tab> (generator names) goes to Nx" 'app: build' (candidates 'nx g ')
 
-check "pnpm nx completes like nx" 'app:build:development app:build:production' \
-    (candidates 'pnpm nx run app:build:')
-check "pnpm exec nx completes like nx" 'ci production' (candidates 'pnpm exec nx build lib -c ')
-check "npx nx completes like nx" build (candidates 'npx nx b')
 rm -f $root/nx-call
-complete -C 'pnpm install ' >/dev/null
-check "other pnpm commands do not call Nx" no (test -e $root/nx-call; and echo yes; or echo no)
-check "the hidden pnpm completion of a later directory still works" 'ORIG-install ORIG-nx' (candidates 'pnpm ')
-check "after pnpm nx only Nx candidates are offered" 'app: build' (candidates 'pnpm nx ')
-check "npx without a completion of its own offers nothing extra" '' (candidates 'npx --no-such-')
-
-# The completion of pnpm that fish 4.1 and later have built in, in a shell without the later
-# directory. It wins over one generated from man pages, as it does in fish itself.
-mkdir -p $root/generated_completions
-echo 'complete -c pnpm -f -a GENERATED' >$root/generated_completions/pnpm.fish
-if status get-file completions/pnpm.fish >/dev/null 2>&1
-    set -l builtin (fish --no-config -c "
-        set -p fish_function_path $repo/functions
-        set -p fish_complete_path $repo/completions
-        set -a fish_complete_path $root/generated_completions
-        set -p PATH $root/bin
-        cd $ws
-        complete -C 'pnpm ' | string join ' '
-        complete -C 'pnpm nx ' | string replace -r '\t.*' '' | string join ' '")
-    check "the built-in pnpm completion still works" BUILTIN-install "$builtin[1]"
-    check "after pnpm nx the built-in pnpm completion is silent" 'app: build' "$builtin[2]"
-else
-    echo "skip the built-in pnpm completion (fish "(string split -f 3 ' ' -- (fish --version))" has none)"
-end
+check "a runner that hands over with complete -C reaches the Nx completion" 'ci production' \
+    (candidates 'runner exec nx build lib -c ')
+check "Nx sees nx and the words after the runner" 'fish|nx|b|' \
+    (complete -C 'runner exec nx b' >/dev/null; cat $root/nx-call)
+check "the plugin installs no rules for pnpm and npx" 0 (begin; complete -c pnpm; complete -c npx; end | count)
 
 # Newer graph: the cached configurations are replaced in the same shell.
 write_graph $ws 202101010000 '"staging": {}'
