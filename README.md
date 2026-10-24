@@ -1,6 +1,6 @@
 # nx-complete-fish
 
-Tab completion for [Nx](https://nx.dev) in fish: `nx`, `pnpm nx`, `pnpm exec nx` and `npx nx`, also from a subdirectory of the workspace. Commands, projects, targets and generator names come from the Nx of the workspace. The plugin adds the options of generators with their values and the configurations of targets, which Nx does not complete.
+Tab completion for [Nx](https://nx.dev) in fish: `nx`, also from a subdirectory of the workspace. Commands, projects, targets and generator names come from the Nx of the workspace. The plugin adds the options of generators with their values and the configurations of targets, which Nx does not complete.
 
 For zsh, see [nx-complete-zsh](https://github.com/rapaglaz/nx-complete-zsh).
 
@@ -17,9 +17,10 @@ For zsh, see [nx-complete-zsh](https://github.com/rapaglaz/nx-complete-zsh).
 | `nx run app:build:<Tab>` | `app:build:production`, `app:build:development` | project graph |
 | `nx build app -c <Tab>`, `--configuration=<Tab>` | the configurations of the target | project graph |
 | `nx run-many -t build,test -c <Tab>` | the configurations of these targets in all projects | project graph |
-| `pnpm nx ...`, `pnpm exec nx ...`, `npx nx ...` | the same as `nx ...` | |
 
-Other `pnpm` and `npx` commands keep the completion that they have without the plugin, for example the pnpm completion that fish 4.1 and later include. Outside an Nx workspace, `nx <Tab>` completes file names.
+Outside an Nx workspace, `nx <Tab>` completes file names.
+
+The plugin completes the command `nx` only, like the completion script of Nx itself. fish loads that completion only when `nx` is on `PATH`, so put `node_modules/.bin` of the workspace on `PATH` (see [Troubleshooting](#troubleshooting)). Since 0.2.0 the plugin does not install rules for `pnpm` and `npx` any more; `pnpm exec nx` and `npx nx` complete when the fish configuration hands the rest of the line over with `__fish_complete_subcommand` (`complete -C`), because `commandline` then returns `nx ...`.
 
 ## Requirements
 
@@ -32,14 +33,6 @@ Other `pnpm` and `npx` commands keep the completion that they have without the p
 ### fisher
 
 ```fish
-fisher install rapaglaz/nx-complete-fish
-```
-
-fisher refuses to install the plugin when `~/.config/fish/completions/pnpm.fish` or `npx.fish` already exists, for example from `pnpm completion fish > ~/.config/fish/completions/pnpm.fish`. Move that file to a directory that fish reads later, and the plugin loads it as the pnpm completion:
-
-```fish
-mkdir -p ~/.local/share/fish/vendor_completions.d
-mv ~/.config/fish/completions/pnpm.fish ~/.local/share/fish/vendor_completions.d/
 fisher install rapaglaz/nx-complete-fish
 ```
 
@@ -62,7 +55,6 @@ If you used the fisher plugin `jukben/fish-nx` before, remove it first with `fis
 - Generator options and their values come from the `schema.json` of the generator: `enum` and `items.enum`, booleans, `x-dropdown: projects`, generator aliases, and local workspace plugins through the `generators` or `schematics` field of their `package.json`. Options with `visible: false` are left out.
 - Target configurations come from `.nx/workspace-data/project-graph.json`, which every `nx` command writes.
 - Both files are read with `jq`, kept in global variables and read again when their modification time changes.
-- fish uses only the first `completions/pnpm.fish` that it finds. The `pnpm.fish` and `npx.fish` of the plugin therefore load the completion that they hide (the next file on `$fish_complete_path`, or the one built into fish) and add a condition to its rules, so that after `pnpm nx` only the Nx candidates are shown.
 
 The plugin defines no key bindings and prints nothing when fish starts; everything is loaded at the first Tab.
 
@@ -70,7 +62,7 @@ The plugin defines no key bindings and prints nothing when fish starts; everythi
 
 - **No projects or configurations.** The project graph does not exist yet, for example in a fresh clone. Run any `nx` command once, for example `pnpm nx show projects`.
 - **Only file names after `nx`.** The Nx of the workspace is older than 23.3, or `node_modules` is not installed.
-- **`nx <Tab>` does nothing, `pnpm nx <Tab>` works.** fish loads the completion of a command only when the command is on `PATH`, and `nx` usually lives in `node_modules/.bin` of the workspace. Use `pnpm nx`, or put `node_modules/.bin` on `PATH`, for example with [mise](https://mise.jdx.dev) in the `mise.toml` of the workspace:
+- **`nx <Tab>` does nothing.** fish loads the completion of a command only when the command is on `PATH`, and `nx` usually lives in `node_modules/.bin` of the workspace. Put `node_modules/.bin` on `PATH`, for example with [mise](https://mise.jdx.dev) in the `mise.toml` of the workspace:
 
   ```toml
   [env]
@@ -96,8 +88,7 @@ mise run release:tag     # on main after that merge: the signed tag vX.Y.Z
 | File | Content |
 | --- | --- |
 | `functions/__nx_complete.fish` | the completion: hand-over to Nx, generator options, configurations |
-| `functions/__nx_complete_wrap.fish` | loads the hidden pnpm or npx completion and adds the Nx rule |
-| `completions/nx.fish`, `pnpm.fish`, `npx.fish` | the completion rules |
+| `completions/nx.fish` | the completion rule |
 | `tests/nx_completion_test.fish` | everything above in a fake workspace with a fake Nx, through `complete -C` |
 | `tests/smoke.sh` | fisher installation in a temporary HOME |
 
@@ -112,7 +103,7 @@ A release takes two steps, because `main` accepts changes only through pull requ
 
 Releases are Git tags `vX.Y.Z` that follow [Semantic Versioning](https://semver.org), with the changes in [CHANGELOG.md](CHANGELOG.md). While the version is 0.x, a breaking change raises the minor version. To stay on one version, install its tag: `fisher install rapaglaz/nx-complete-fish@v0.1.0`.
 
-A change is breaking when it raises a minimum version (Nx, the shell or jq), changes how the plugin is installed, drops `pnpm` or `npx`, or renames or removes one of these names: `__nx_complete`, `__nx_complete --wrapped`, `__nx_complete_wrap` and the files in `completions/`. Other names that start with `__nx_`, for example the caches, are internal and can change in any release.
+A change is breaking when it raises a minimum version (Nx, the shell or jq), changes how the plugin is installed, or renames or removes the function `__nx_complete` or the file `completions/nx.fish`. Other names that start with `__nx_`, for example the caches, are internal and can change in any release.
 
 ## License
 

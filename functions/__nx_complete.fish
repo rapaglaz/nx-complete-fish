@@ -1,28 +1,18 @@
-# Tab completion for Nx, used by completions/nx.fish, pnpm.fish and npx.fish. Nx 23.3 and later
-# complete commands, projects, targets and generator names themselves (Tab runs the workspace-local
-# nx with NX_COMPLETE=fish). These functions add what Nx leaves out and read it with jq from the
-# workspace: the options of a generator and their values (its schema.json) and the configurations of
-# a target (.nx/workspace-data/project-graph.json, which every nx command keeps current).
+# Tab completion for Nx, used by completions/nx.fish. Nx 23.3 and later complete commands,
+# projects, targets and generator names themselves (Tab runs the workspace-local nx with
+# NX_COMPLETE=fish). These functions add what Nx leaves out and read it with jq from the workspace:
+# the options of a generator and their values (its schema.json) and the configurations of a target
+# (.nx/workspace-data/project-graph.json, which every nx command keeps current).
 # Results are cached in global variables for the life of the shell and checked against the file mtime.
 #
-#   __nx_complete            prints the candidates for the command line
-#   __nx_complete --wrapped  true when `pnpm nx`, `pnpm exec nx` or `npx nx` is completed
+# After a runner such as `pnpm exec nx`, a completion that hands the rest of the line over with
+# `complete -C` (as __fish_complete_subcommand does) reaches this function too: commandline then
+# returns `nx ...`.
+#
+#   __nx_complete  prints the candidates for the command line
 function __nx_complete
     set -l tokens (commandline -xpc)
     set -l current (commandline -ct)
-
-    # The runner words are dropped, so the rest sees `nx ...` in every case.
-    set -l skip 0
-    if test "$tokens[2]" = nx
-        set skip 1
-    else if test "$tokens[1]" = pnpm; and test "$tokens[2]" = exec; and test "$tokens[3]" = nx
-        set skip 2
-    end
-    if test "$argv[1]" = --wrapped
-        test $skip -gt 0 -a (count $tokens) -gt $skip
-        return
-    end
-    test $skip -gt 0; and set -e tokens[1..$skip]
 
     set -l root (__nx_root)
     or begin
