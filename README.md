@@ -77,7 +77,7 @@ A change is breaking when it raises a minimum version (Nx, the shell or jq), cha
 
 ## Contributing
 
-The development setup, the tests, the commit rules and the release steps are in [CONTRIBUTING.md](CONTRIBUTING.md).
+The development setup, the tests, the commit rules and the release steps are in [CONTRIBUTING.md](CONTRIBUTING.md). Instructions for AI coding agents are in [AGENTS.md](AGENTS.md).
 
 ## License
 
