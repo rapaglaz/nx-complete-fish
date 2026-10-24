@@ -29,9 +29,13 @@ run = "bash tests/smoke.sh"
 description = "Format the fish files with fish_indent and the Bash scripts with shfmt"
 run = "bash scripts/check.sh --write"
 
-[tasks.release]
-description = "Write CHANGELOG.md, commit it and create a signed tag (on main; nothing is pushed)"
-run = "bash scripts/release.sh"
+[tasks."release:prepare"]
+description = "On main: CHANGELOG.md on a release branch and a pull request (optional argument vX.Y.Z)"
+run = "bash scripts/release.sh prepare"
+
+[tasks."release:tag"]
+description = "On main after the release pull request: push the signed tag of the release"
+run = "bash scripts/release.sh tag"
 
 [tasks.hooks]
 description = "Install the Git hooks (pre-commit, commit-msg)"

@@ -1,38 +1,77 @@
 #!/usr/bin/env bash
 #
-# Prepares a release on main: writes CHANGELOG.md with git-cliff, commits it and creates a signed
-# tag vX.Y.Z. Without an argument, git-cliff computes the version from the commits since the last
-# tag (cliff.toml, [bump]). Nothing is pushed; the script prints the push command.
+# Makes a release in two steps, because main accepts changes only through pull requests:
 #
-# Usage: bash scripts/release.sh [vX.Y.Z] (or `mise run release`)
+#   prepare [vX.Y.Z]  on an up-to-date main: writes CHANGELOG.md with git-cliff on the branch
+#                     chore/release-vX.Y.Z, commits it, pushes the branch and opens a pull
+#                     request. Without a version, git-cliff computes it (cliff.toml, [bump]).
+#   tag               on main after that pull request is merged: creates the signed tag vX.Y.Z
+#                     on the release commit and pushes it. The Release workflow then tests the
+#                     oldest supported shell release and creates the GitHub Release.
+#
+# Usage: bash scripts/release.sh prepare [vX.Y.Z] | tag
+#        (or `mise run release:prepare [vX.Y.Z]` and `mise run release:tag`)
 
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-if [[ "$(git branch --show-current)" != main ]]; then
-    echo "Releases are made on main." >&2
+fail() {
+    echo "$1" >&2
     exit 1
-fi
-if [[ -n "$(git status --porcelain)" ]]; then
-    echo "The working tree has changes; commit or stash them first." >&2
-    exit 1
-fi
+}
 
-version="${1:-$(git cliff --bumped-version)}"
-if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "Expected a version like v0.1.0, got: $version" >&2
-    exit 1
-fi
-if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
-    echo "The tag $version exists already." >&2
-    exit 1
-fi
+# Both steps start from main without local changes and at the same commit as origin/main.
+require_current_main() {
+    [[ "$(git branch --show-current)" == main ]] || fail "Run this on main."
+    [[ -z "$(git status --porcelain)" ]] || fail "The working tree has changes; commit or stash them first."
+    git fetch --quiet --tags origin
+    [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] ||
+        fail "main differs from origin/main; run git pull --ff-only first."
+}
 
-git cliff --tag "$version" --output CHANGELOG.md
-git add CHANGELOG.md
-git commit -S -m "chore(release): $version"
-git tag -s "$version" -m "$version"
+require_new_tag() { # <version>
+    [[ "$1" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "Expected a version like v0.1.0, got: $1"
+    if git rev-parse -q --verify "refs/tags/$1" >/dev/null; then
+        fail "The tag $1 exists already."
+    fi
+}
 
-echo "Created the commit and the signed tag $version. Publish them with:"
-echo "  git push origin main $version"
+prepare() { # [version]
+    require_current_main
+    local version="${1:-$(git cliff --bumped-version)}"
+    require_new_tag "$version"
+    local branch="chore/release-$version"
+
+    git switch --quiet -c "$branch"
+    git cliff --tag "$version" --output CHANGELOG.md
+    git add CHANGELOG.md
+    git commit -S -m "chore(release): $version"
+    git push --quiet -u origin "$branch"
+    gh pr create --base main --head "$branch" --title "chore(release): $version" \
+        --body "This PR adds the changes of $version to CHANGELOG.md. After the merge, run \`mise run release:tag\` on main."
+
+    echo "Merge the pull request after CI is green, then run on main:"
+    echo "  git switch main && git pull --ff-only && mise run release:tag"
+}
+
+tag() {
+    require_current_main
+    # A squash merge adds the number of the pull request to the subject.
+    local subject pattern='^chore\(release\): (v[0-9]+\.[0-9]+\.[0-9]+)( \(#[0-9]+\))?$'
+    subject="$(git log -1 --format=%s)"
+    [[ "$subject" =~ $pattern ]] ||
+        fail "The last commit on main is not a release commit: $subject"
+    local version="${BASH_REMATCH[1]}"
+    require_new_tag "$version"
+
+    git tag -s "$version" -m "$version"
+    git push --quiet origin "$version"
+    echo "Pushed the signed tag $version; the Release workflow creates the GitHub Release."
+}
+
+case "${1:-}" in
+    prepare) prepare "${2:-}" ;;
+    tag) tag ;;
+    *) fail "Usage: bash scripts/release.sh prepare [vX.Y.Z] | tag" ;;
+esac
