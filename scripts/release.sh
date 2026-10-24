@@ -14,7 +14,8 @@
 
 set -euo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# An empty CDPATH keeps cd from searching it and printing the directory.
+CDPATH='' cd -- "$(dirname "${BASH_SOURCE[0]}")/.."
 
 fail() {
     echo "$1" >&2

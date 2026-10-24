@@ -8,7 +8,8 @@
 
 set -euo pipefail
 
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+# An empty CDPATH keeps cd from searching it and printing the directory.
+CDPATH='' cd -- "$(dirname "${BASH_SOURCE[0]}")/.."
 
 fish_version="${1:-}"
 jq_version=1.8.2
