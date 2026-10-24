@@ -18,6 +18,7 @@ For zsh, see [nx-complete-zsh](https://github.com/rapaglaz/nx-complete-zsh).
 | `nx build app -c <Tab>`, `--configuration=<Tab>` | the configurations of the target | project graph |
 | `nx run-many -t build,test -c <Tab>` | the configurations of these targets in all projects | project graph |
 | `pnpm nx ...`, `pnpm exec nx ...`, `npx nx ...` | the same as `nx ...` | |
+| `bunx nx ...`, `bun x nx ...`, `bun run nx ...`, `npm exec nx ...` | the same as `nx ...`, with the rules from [bun and npm](#bun-and-npm) | |
 
 Other `pnpm` and `npx` commands keep the completion that they have without the plugin, for example the pnpm completion that fish 4.1 and later include. Outside an Nx workspace, `nx <Tab>` completes file names.
 
@@ -54,6 +55,18 @@ cp ~/src/nx-complete-fish/completions/*.fish ~/.config/fish/completions/
 ```
 
 If you used the fisher plugin `jukben/fish-nx` before, remove it first with `fisher remove jukben/fish-nx`, because it installs its own `completions/nx.fish`.
+
+### bun and npm
+
+The plugin installs completion rules for `pnpm` and `npx` only, because a `completions/bun.fish` of the plugin would conflict with the one that `bun completions` writes to the same directory. To complete Nx after `bunx`, `bun`, `bun x`, `bun run` and `npm exec`, add these lines to `~/.config/fish/config.fish`:
+
+```fish
+for runner in bunx bun npm
+    complete --command $runner --no-files --condition '__nx_complete --wrapped' --arguments '(__nx_complete)'
+end
+```
+
+The condition is true only when `nx` follows the runner words, so the other `bun` and `npm` commands keep their completion.
 
 ## How it works
 

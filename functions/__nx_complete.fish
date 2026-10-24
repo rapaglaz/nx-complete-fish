@@ -6,17 +6,22 @@
 # Results are cached in global variables for the life of the shell and checked against the file mtime.
 #
 #   __nx_complete            prints the candidates for the command line
-#   __nx_complete --wrapped  true when `pnpm nx`, `pnpm exec nx` or `npx nx` is completed
+#   __nx_complete --wrapped  true when nx is completed after a runner: `pnpm nx`, `pnpm exec nx`,
+#                            `npx nx`, `bunx nx`, `bun nx`, `bun x nx`, `bun run nx`, `npm exec nx`
+#                            or `npm exec -- nx`
 function __nx_complete
     set -l tokens (commandline -xpc)
     set -l current (commandline -ct)
 
-    # The runner words are dropped, so the rest sees `nx ...` in every case.
+    # The runner words are dropped, so the rest sees `nx ...` in every case. The completion rules
+    # decide which commands are runners; this only counts their words.
     set -l skip 0
     if test "$tokens[2]" = nx
         set skip 1
-    else if test "$tokens[1]" = pnpm; and test "$tokens[2]" = exec; and test "$tokens[3]" = nx
+    else if test "$tokens[3]" = nx; and contains -- "$tokens[2]" exec x run
         set skip 2
+    else if test "$tokens[2]" = exec; and test "$tokens[3]" = --; and test "$tokens[4]" = nx
+        set skip 3
     end
     if test "$argv[1]" = --wrapped
         test $skip -gt 0 -a (count $tokens) -gt $skip

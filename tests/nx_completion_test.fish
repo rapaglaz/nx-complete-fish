@@ -61,8 +61,10 @@ set -p PATH $ws/node_modules/.bin
 # `pnpm completion fish` does; the completion built into fish 4.1 and later sources it.
 mkdir -p $root/bin $root/later
 printf '%s\n' '#!/bin/sh' 'echo "complete -c pnpm -f -a BUILTIN-install"' >$root/bin/pnpm
-printf '%s\n' '#!/bin/sh' >$root/bin/npx
-chmod +x $root/bin/pnpm $root/bin/npx
+for runner in npx bunx bun npm
+    printf '%s\n' '#!/bin/sh' >$root/bin/$runner
+end
+chmod +x $root/bin/*
 set -p PATH $root/bin
 set -gx XDG_CACHE_HOME $root/cache
 # A pnpm completion that this plugin hides: a later directory of $fish_complete_path.
@@ -117,6 +119,21 @@ check "pnpm nx completes like nx" 'app:build:development app:build:production' \
     (candidates 'pnpm nx run app:build:')
 check "pnpm exec nx completes like nx" 'ci production' (candidates 'pnpm exec nx build lib -c ')
 check "npx nx completes like nx" build (candidates 'npx nx b')
+
+# The rules for bunx, bun and npm that README.md gives for config.fish.
+for runner in bunx bun npm
+    complete --command $runner --no-files --condition '__nx_complete --wrapped' --arguments '(__nx_complete)'
+end
+for line in 'bunx nx' 'bun nx' 'bun x nx' 'bun run nx' 'npm exec nx' 'npm exec -- nx'
+    rm -f $root/nx-call
+    check "$line completes like nx" build (candidates "$line b")
+    check "$line passes the words from nx on" 'fish|nx|b|' (cat $root/nx-call)
+end
+rm -f $root/nx-call
+complete -C 'bun run build ' >/dev/null
+complete -C 'npm exec tsc ' >/dev/null
+check "other bun and npm commands do not call Nx" no (test -e $root/nx-call; and echo yes; or echo no)
+
 rm -f $root/nx-call
 complete -C 'pnpm install ' >/dev/null
 check "other pnpm commands do not call Nx" no (test -e $root/nx-call; and echo yes; or echo no)
