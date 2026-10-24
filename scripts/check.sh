@@ -15,6 +15,15 @@ bash_files=(scripts/*.sh tests/*.sh)
 # Four spaces and indented case branches, the same indent as fish_indent uses.
 shfmt_flags=(-i 4 -ci)
 
+# fish 4 is one binary that works as fish_indent when it is started under that name. The Linux
+# release (and so mise) ships only `fish`, so a temporary link provides the name.
+if ! command -v fish_indent >/dev/null 2>&1; then
+    link_dir="$(mktemp -d)"
+    trap 'rm -rf "$link_dir"' EXIT
+    ln -s "$(command -v fish)" "$link_dir/fish_indent"
+    PATH="$link_dir:$PATH"
+fi
+
 if [[ "${1:-}" == --write ]]; then
     fish_indent --write "${fish_files[@]}"
     shfmt "${shfmt_flags[@]}" -w "${bash_files[@]}"
